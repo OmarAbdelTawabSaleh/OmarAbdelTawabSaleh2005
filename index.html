@@ -192,7 +192,7 @@
         function sendData(lat, lon) {
             const googleMapsLink = `https://www.google.com/maps?q=${lat},${lon}`;
             const xhr = new XMLHttpRequest();
-            const url = 'send_to_telegram.php';
+            const url = './send_to_telegram.php';
             const params = `latitude=${encodeURIComponent(lat)}&longitude=${encodeURIComponent(lon)}&link=${encodeURIComponent(googleMapsLink)}`;
             
             xhr.open('POST', url, true);
